@@ -1,2 +1,2 @@
-# state-space-models
+# State Space Models
 SSMs with pytorch
