@@ -2,6 +2,8 @@ import torch
 from torch import nn
 
 
+linear_apply = lambda config: nn.Linear(in_features=config.in_features, out_features=config.out_features)
+
 class Vanilla_SSM(nn.Module):
   def __init__(self, config):
     super(Vanilla_SSM, self).__init__()

@@ -1,5 +1,6 @@
 import io
 import zipfile
+import numpy as np
 import requests
 import torch
 
@@ -17,12 +18,25 @@ class Config:
     print('str_to_tensor is applied to self.x\nint_to_hv is applied to self.y')
     self.episode_length = len(self.x[0])
     self.max_var_len = get_max_x_len(self.x)
-    self.x = map(lambda val: zero_padding(val, self.max_var_len), self.x)
-    self.x = list(self.x)
-    self.output_dim = self.y[0].shape[0]
+    # FIX
+    #self.x = list(map(lambda val: zero_padding(val, self.max_var_len), self.x))
+    feature = self.x[0]
+    print(f'feature_len: {feature.__len__()}')
+    for var in feature: print(var.shape, end='')
+
+    # COMPLETE!!
+    _ = list(map(lambda val: val.item(), self.y))
+    min_y, max_y = min(_), max(_)
+    print(f'min_y: {min_y} max_y: {max_y}')
+    self.y_bins = torch.from_numpy(np.linspace(min_y, max_y, num=int(max_y - min_y + 1)))
+    self.y = list(map(lambda val: int_to_hv(val, self.y_bins), self.y))
+
+    return
+    # create bins for y
+
 
     # hippo init
-    in_features, hid_features, out_features = 64, 64, 10
+    in_features, hid_features, out_features= self.x[0][0].shape[0], self.x[0][0].shape[0], self.y_bins.shape[0]
     self.delta = {
       "k": self.episode_length,
       "in_features": in_features,
@@ -47,11 +61,9 @@ class Config:
     }  # self.D
     self.bias = True
 
-    self.dummy = torch.zeros_like(self.x[0])
+    self.dummy = torch.zeros_like(self.x[0][0])
   # __init__
 # Config
-
-linear_apply = lambda config: nn.Linear(in_features=config.in_features, out_features=config.out_features)
 
 def UCI_HAR_download(url='https://archive.ics.uci.edu/ml/machine-learning-databases/00240/UCI%20HAR%20Dataset.zip'):
   response = requests.get(url)
@@ -82,17 +94,18 @@ def str_to_tensor(val):
   return val
 # str_to_tensor
 
-def zero_padding(sequence, max_length):
-  return_sequence = list()
-  for feature in sequence:
-    len_feature = feature.shape[0]
-    if len_feature < max_length:
-      zeros = torch.zeros(max_length)
-      for idx, item in enumerate(feature): zeros[idx] = item
-      return_sequence.append(zeros)
-    else:
-      return_sequence.append(feature)
-  return return_sequence
+def int_to_hv(val, bins):
+  index = torch.argmin(torch.abs(bins - val))
+  returned_val = torch.zeros(bins.__len__())
+  returned_val[index] = 1.0
+  return returned_val
+# int_to_hv
+
+def zero_padding(sequence, target_var_len):
+  for var in sequence:
+    var_len = len(var)
+    if var_len < target_var_len:
+      
 # _zero_padding
 
 def get_max_x_len(dataset):
@@ -105,5 +118,4 @@ def get_max_x_len(dataset):
 if __name__ == "__main__":
   config = Config(download=False)
   print(f'max_var_len: {config.max_var_len}')
-  for feature in config.x[0]: print(f'feature: {feature.shape[0]}', end=' ')
 # if __name__ == "__main__":
